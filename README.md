@@ -75,7 +75,9 @@
 
 17) Like wise the broker will send the message to the server and sever will response with the same message as mentioned in point number 9.
 
-18) 
+18) By receiving the sever reponse the broker will generate the appropriate payload as mentioned in point 12.
+
+19) One intriguing question might arise that "how the deivce identify two different A.C. ?". To 
 
 
 
