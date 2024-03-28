@@ -1,0 +1,679 @@
+
+
+#include <IRLibSendBase.h>    //We need the base code
+#include <IRLib_HashRaw.h>    //Only use raw sender
+
+#include <Ethernet.h>
+
+
+/*
+ * AUTHOR:  PARTH SONI & NITYA PARIKH
+ * E-MAIL 1: parthsoni08072000@gmail.com
+ * E-MAIL 2: nityaparikh2@gmail.com
+
+ *
+ *    
+ * DHTPIN      8             //A2
+ * 8         5             //6
+ * A1        A5            //A0
+ * A2        A0            //A1
+ * 5   5             //5
+ * 3        A4            //2
+ * 4        3             //3
+ * 4_Read   2             //4
+
+ */
+/* 
+ *  DHTPIN 8
+ *  BUZ 12
+ *  SSR1 6
+ *  SSR2 7 
+ *  SSR1_LED 4
+ *  SSR2_LED 5
+ *  BUTTON 2
+ *  ERROR_LED 3
+ *  
+ *  
+ *  
+ *  
+ */
+ 
+#include <SPI.h>
+
+//#include <ESP8266WiFi.h>
+//#include <ESP8266WebServer.h>
+#include <PubSubClient.h>
+//#include <WiFiManager.h>
+//#include<WiFi.h>
+//#include <esp32DHT.h>
+//#include <MFRC522.h>
+
+#include "DHT.h"
+#include "EmonLib.h"
+
+#define DHTTYPE DHT11
+
+//#define SS_PIN      4
+//#define RST_PIN     9
+
+///*
+//ARduino Board
+//#define Error_LED 5      //2 
+//#define DHTPIN  2               //8
+//#define SSR1    3 //7   
+//#define BTN     7 //3  (1284)3
+//#define buz     8  //5  (1284)15
+//#define SSR2    4//A4 
+//#define CTR1    A1              //A5            
+//#define CTR2    A2            
+//*/
+//1284p Board
+//#define Error_LED       //2
+//#define DHTPIN                //18
+//#define SSR1     //29   
+//#define BTN      //3  
+//#define buz       //15  
+//#define SSR2    1  
+//#define CTR1    A1              //A5            
+//#define CTR2    A2            
+//*/
+//*/
+//Mega2560 Board
+//#define Error_LED       5
+//#define DHTPIN          2
+//#define SSR1 led     27
+//#define SSR1    3 
+//#define BTN      8  
+//#define buz      7  
+//#define SSR2    4  
+//#define SSR2 led    29
+//#define CTR1    A1                          
+//#define CTR2    A2            
+//*/
+/*
+//Custom Board
+#define DHTPIN      A2
+#define 8         6
+#define A1        A0            
+#define A2        A1            
+#define 5   5
+#define 3        2            
+#define 4        3
+#define 4_Read   4
+*/
+
+//#define 1 1
+//#define 0 0
+           
+
+byte mac[]    = {  0xDE, 0xED, 0xBB, 0xFE, 0x00, 0x02 };        //ARD001
+//IPAddress ip(192, 168, 0, 7);           //ARD001
+//IPAddress server(192, 168, 0, 107);
+IPAddress ip(192, 168, 131, 9);
+IPAddress server(192, 168, 131, 1);
+
+
+
+
+const char* sub_Topic = "ARD102";
+const char* sub_Topic_A = "ARD102A";
+const char* pub_Topic = "test";
+const char* pub_Topic_TEMP ="temphumid";
+
+
+unsigned long CT1_startMillis;
+unsigned long CT1_currentMillis;
+unsigned long CT2_startMillis;
+unsigned long CT2_currentMillis;
+
+String Module_id = "ARD102";
+String Local_Server = "192.168.1.2 ";
+
+String Status_AC1 = "OFF";
+String Status_AC2 = "OFF";
+String Device_Status="UNLOCKED";
+
+const char* mqttUser = "username";      
+const char* mqttPassword = "admsproject";
+
+String Data1 = Local_Server + Module_id ;
+String Data2 = Local_Server + Module_id +'A';
+String Card_Read_temp;
+
+EnergyMonitor emon1;
+EnergyMonitor emon2;
+double kilos1 = 0;
+double kilos2 = 0;
+double k=0;
+int count = 0;                                          // count = 0
+char Card_Read[12] = {'1','2','3','4','5','6','7','8','9','0','1','2'};         //"123456789123";                        // character array of size 12
+char temp[12];
+boolean flag = 0;
+//int ctn;
+int buttonNew;
+int buttonOld=1;// flag =0
+String hold ;
+
+EthernetClient ethClient;
+IRsendRaw mySender;
+
+//WiFiClient espClient;
+PubSubClient client(ethClient);
+//SoftwareSerial ss(9,10);
+DHT dht(2, DHTTYPE);
+
+byte id_temp[3][3];  
+char tmp2[80] ;
+//char tm2[80];
+float t,h;
+float Attemping_time,Current_time;
+//byte willQoS = 0;
+//const char* willTopic = "D_STATUS";
+//const char* willMeSerialage = "OFF";
+//boolean willRetain = false;
+
+#define RAW_DATA_LEN 180
+uint16_t rawData_On[RAW_DATA_LEN]={
+  3074, 1690, 290, 502, 290, 1294, 290, 506, 
+  286, 502, 290, 1294, 290, 502, 290, 1294, 
+  290, 502, 290, 502, 290, 1294, 290, 1294, 
+  290, 1294, 290, 502, 290, 1294, 290, 502, 
+  290, 1294, 290, 1294, 290, 1294, 290, 502, 
+  290, 502, 290, 502, 290, 502, 290, 1294, 
+  290, 1294, 290, 502, 290, 1294, 286, 1298, 
+  290, 502, 286, 506, 290, 1294, 286, 506, 
+  286, 506, 290, 1294, 286, 506, 286, 506, 
+  286, 1298, 286, 1298, 286, 506, 286, 1298, 
+  286, 1298, 286, 1298, 286, 1298, 286, 506, 
+  286, 1298, 286, 1298, 286, 1302, 282, 1298, 
+  286, 506, 286, 506, 286, 506, 286, 1298, 
+  286, 506, 286, 506, 286, 506, 286, 506, 
+  286, 1294, 290, 1298, 286, 1294, 290, 1294, 
+  290, 1294, 290, 502, 290, 1298, 286, 502, 
+  290, 1298, 286, 506, 286, 502, 290, 502, 
+  290, 502, 290, 1298, 286, 502, 290, 1298, 
+  286, 502, 290, 506, 286, 1298, 286, 1294, 
+  290, 502, 290, 502, 290, 502, 290, 1294, 
+  290, 502, 290, 1298, 286, 502, 290, 502, 
+  290, 1294, 290, 1298, 286, 1298, 286, 506, 
+  286, 1294, 290, 1000};
+
+
+
+#define RAW_DATA_LEN 180
+uint16_t rawData_Off[RAW_DATA_LEN]={
+  3066, 1674, 310, 482, 310, 1274, 310, 482, 
+  310, 482, 310, 1274, 310, 482, 310, 1274, 
+  310, 482, 310, 482, 310, 1274, 310, 1274, 
+  306, 1278, 306, 486, 306, 1278, 306, 486, 
+  306, 1274, 310, 1278, 306, 1274, 310, 482, 
+  310, 482, 310, 482, 310, 482, 310, 1274, 
+  310, 1274, 310, 482, 310, 1274, 310, 1274, 
+  310, 482, 310, 482, 310, 1274, 310, 482, 
+  310, 482, 310, 1274, 310, 482, 310, 482, 
+  310, 1274, 310, 1274, 310, 482, 310, 1274, 
+  310, 1274, 310, 1274, 310, 1274, 310, 482, 
+  310, 1274, 310, 1274, 310, 1274, 310, 1274, 
+  310, 482, 310, 482, 310, 482, 310, 1274, 
+  310, 482, 310, 482, 310, 482, 310, 482, 
+  310, 1274, 310, 1274, 310, 1274, 310, 1274, 
+  310, 1274, 310, 482, 310, 1274, 310, 482, 
+  310, 1274, 310, 482, 310, 482, 310, 482, 
+  310, 482, 310, 1274, 310, 482, 310, 1274, 
+  310, 482, 310, 482, 310, 1274, 310, 1274, 
+  310, 1274, 310, 482, 310, 482, 310, 1274, 
+  310, 482, 310, 1274, 310, 482, 310, 482, 
+  310, 482, 310, 1274, 310, 1274, 310, 482, 
+  310, 1274, 310, 1000};
+
+void buzo()
+{
+    digitalWrite(7,1);
+    digitalWrite(5 , 1);
+    delay(500);
+    digitalWrite(7,0);
+    digitalWrite(5 , 0);
+    delay(50);
+}
+void lbuzo()
+{
+    digitalWrite(7,1);
+    digitalWrite(5 , 1);
+    delay(3000);
+    digitalWrite(7,0);
+    digitalWrite(5 , 0);
+    delay(50);
+}
+
+
+void CT_out1()
+{
+  double RMSCurrent = emon1.calcIrms(1480);                               // Calculate Irms only
+//  Serial.print("RMSCurrent : ");
+  Serial.println(RMSCurrent);
+  int RMSPower = 240*RMSCurrent;
+//  Serial.print("RMSPower : ");
+//  Serial.println(RMSPower);
+  CT1_currentMillis = millis();
+  unsigned long time = CT1_currentMillis - CT1_startMillis;
+  kilos1 = kilos1 + ((double)RMSPower * ((double)time/60/60/1000000));    //Calculate kilowatt hours used
+//  kilos1 = kilos1 + ((double)RMSPower * ((double)time/60/60/1000));    //Calculate kilowatt hours used
+  CT1_startMillis = millis();
+//  Serial.print("Killos1 : ");
+//  Serial.println(kilos1);
+}
+
+void CT_out2()
+{
+  double RMSCurrent = emon2.calcIrms(1480);                               // Calculate Irms only
+  int RMSPower = 240*RMSCurrent;
+  CT2_currentMillis = millis();
+  unsigned long time = CT2_currentMillis - CT2_startMillis;
+  kilos2 = kilos2 + ((double)RMSPower * ((double)time/60/60/1000000));    //Calculate kilowatt hours used
+  CT2_startMillis = millis();
+//  Serial.print("Killos2 : ");
+//  Serial.println(kilos2);
+}
+
+void CODE_AC1()
+           {
+                    String tmp;
+                    tmp = Status_AC1 + ' ' + Data1 + ' ' + hold + ' ' + String(h) + ' ' + String(t)+ ' ' + String(kilos1) ;
+//                    Serial.print("tem :- ");
+//                    Serial.println(tmp);
+                    tmp.toCharArray(tmp2, 80);
+            
+                    Serial.println(tmp2);
+                    client.publish(pub_Topic , tmp2);
+                   // digitalWrite(5 , 1);
+                    delay(300);
+            }
+
+void CODE_AC2()
+{
+                    String tmp;
+                    tmp = Status_AC2 + ' ' + Data2 + ' ' + hold + ' ' + String(h) + ' ' + String(t)+ ' ' + String(kilos2) ;
+      
+//                    Serial.print("tem :- ");
+//                    Serial.println(tmp);
+                    tmp.toCharArray(tmp2, 80);
+            
+                    Serial.println(tmp2);
+                    client.publish(pub_Topic , tmp2);
+                   // digitalWrite(5 , 1);
+                    delay(300);
+}
+
+void sread()
+ {
+   h = dht.readHumidity();
+   t = dht.readTemperature();
+   //h=0.00;
+   //t=0.00;
+   }
+    void callback(char* topic, byte* payload, unsigned int length)
+    {
+//     Serial.print("Message arrived [");
+      Serial.print(topic);
+//      Serial.print("] ");
+//      for (int i=0;i<length;i++) 
+//      {
+//       Serial.print((char)payload[i]);
+//      }
+      // change
+//      Serial.println();
+      if ((char)payload[0] == '0')
+      {
+                                  
+            if(Status_AC1 == "OFF")
+                {
+//                      Serial.println("AC1 IS turning on");
+                      Status_AC1 = "ON";
+                     // digitalWrite(5,1);
+                      digitalWrite(3,1);
+                      //digitalWrite(27,1);
+                      delay(200);
+                      mySender.send(rawData_On,RAW_DATA_LEN,36);
+                     // Attemping_time=millis();
+                      buzo();
+                      CT1_startMillis=millis();
+
+                }
+      } 
+        else if ((char)payload[0] == '1')
+      {
+//          Serial.println("AC1 is turning off");
+          Status_AC1 = "OFF";
+          mySender.send(rawData_Off,RAW_DATA_LEN,36);
+          delay(5000);
+       //   digitalWrite(5, 0);
+          digitalWrite(3,0);
+          //digitalWrite(27,0);
+          buzo();
+          buzo();
+          kilos1=0;
+          if(Status_AC2=="ON")
+          {
+//            Serial.println("AC2 IS TURNING OFF");
+            mySender.send(rawData_Off,RAW_DATA_LEN,36);
+            delay(5000);
+            //digitalWrite(4 , 0);
+            digitalWrite(4,0);
+            //digitalWrite(29,0);
+            Status_AC2="OFF";
+            buzo();
+            buzo();
+            kilos2=0;
+          }
+      } else if ((char)payload[0] == '2') 
+      {
+          Serial.print("INVALID CARD");
+          lbuzo();
+          lbuzo();
+//          8o();
+//          8o();
+
+      } 
+  else if ((char)payload[0] == '3') 
+   {
+      Serial.print("ACCESS DENIED");
+      lbuzo();
+      lbuzo();
+      lbuzo();
+     // digitalWrite(5 , 0);
+   } 
+    else if((char)payload[0]=='6')
+    {
+//      Serial.println("AC2 IS TURNING OFF");
+       mySender.send(rawData_Off,RAW_DATA_LEN,36);
+       delay(5000);
+//      digitalWrite(4 , 0);
+      digitalWrite(4,0);
+     // digitalWrite(29,0);
+      Status_AC2="OFF";
+      buzo();
+      buzo();
+      kilos2=0;
+    }
+    else if((char)payload[0]=='5')
+    {
+//      Serial.println("AC2 IS TURNING ON");
+//      digitalWrite(4 , 1);
+      digitalWrite(4,1);
+     // digitalWrite(29,1);
+      delay(200);
+       mySender.send(rawData_On,RAW_DATA_LEN,36);
+      Status_AC2="ON";
+      buzo();
+      CT1_startMillis=millis();
+    }
+   
+   else if((char)payload[0] == '7')
+   {
+      Serial.println("Communication Error : Please Try Again :) ");
+      //Status_AC1="OFF";
+      //Status_AC2 = "OFF";
+      lbuzo();
+      lbuzo();
+      
+   }
+   else if((char)payload[0] == '8')
+   {
+      Serial.print("No table updated on the server side");
+      lbuzo();
+      delay(200);
+      buzo();
+   }
+   else if((char)payload[0] == '4')
+   {
+     lbuzo();
+     Serial.print("Access denied");
+    Serial.end();
+    Serial.begin(9600);
+
+
+   }
+  else
+  {
+      Serial.println("No Callback");
+  }
+
+//  if( ((char)payload[0] == '0') | ((char)payload[0] == '1') | ((char)payload[0] == '2') | ((char)payload[0] == '3') | ((char)payload[0] == '4') )
+  if( ((char)payload[0] == '0') | ((char)payload[0] == '1') | ((char)payload[0] == '2') | ((char)payload[0] == '5') | ((char)payload[0] == '4') | ((char)payload[0] == '7') | ((char)payload[0] == '8') | ((char)payload[0] == '6') | ((char)payload[0] == '3') | ((char)payload[0] == '9'))
+  {
+//    Serial.println("Card Read Activate...");
+    for(int i=0 ; i<12 ; i++) 
+    {
+      temp[i] = 0;
+    }
+  //    if(((char)payload[0] == '0') | ((char)payload[0] == '2') | ((char)payload[0] == '3') | ((char)payload[0] == '4')) {
+     if(((char)payload[0] == '0') | ((char)payload[0] == '2') )
+      delay(200);
+    }
+  }
+
+ 
+
+  void reconnect()
+ {
+             while (!client.connected()) {
+   Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    if (client.connect("ETH_102COM", mqttUser, mqttPassword,"D_STATUS", 0, false, "OFFLINE 102 192.168.1.2"))
+    {
+        Serial.println("connected");
+        buzo();
+      // Once connected, publish an announcement...
+     //  client.publish(pub_Topic , sub_Topic);
+    //   client.publish(pub_Topic , "ARD00X Connected");
+      // ... and resubscribe
+        client.publish("D_STATUS","ONLINE 102 192.168.1.2");
+        client.subscribe(sub_Topic);
+        client.subscribe(sub_Topic_A);
+        client.loop();
+    } 
+    else
+    {
+//      Serial.print("failed, rc=");
+//      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      delay(5000);
+      //digitalWrite(,0);
+      //digitalWrite(4,0);
+      digitalWrite(4,0);
+      digitalWrite(3,0);
+      Status_AC1="OFF";
+      Status_AC2="OFF";
+      buzo();
+    }
+  }
+ }
+
+  void setup()
+ {
+  Serial.begin(9600);
+
+  dht.begin();
+//  Serial.print("hii");
+//  client.connect("ETHClient", );
+ // ss.begin(9600);
+//  rfid.PCD_Init();
+
+//  pinMode(8 , OUTPUT);
+   //pinMode(12 , OUTPUT);
+   //pinMode(3, OUTPUT);
+   pinMode(4,OUTPUT);
+   pinMode(3 , OUTPUT);
+   pinMode(5 , OUTPUT);
+   //pinMode(29 , OUTPUT);
+   //pinMode(27 , OUTPUT);
+   //pinMode(4,OUTPUT);
+   pinMode(7,OUTPUT);
+   //digitalWrite(4 , 0);
+   digitalWrite(4 , 0);
+//   pinMode(10  , OUTPUT);
+//   digitalWrite(10,1);
+   
+  pinMode(8 , INPUT);
+  pinMode(2,INPUT);
+  pinMode(A14,INPUT);
+  pinMode(A2,INPUT);
+  //setup_wifi();
+  client.setServer(server, 1883);
+//  client.setServer(server, 808);
+ 
+  client.setCallback(callback);
+  client.loop();
+
+//  Ethernet.begin(mac, ip, dnsIP, gateway, subnetIP);
+   delay(1000);
+ Ethernet.begin(mac, ip);
+   emon1.current(A14, 42.80);
+  emon2.current(A1, 42.80);
+            //Must
+     
+  //  for (byte i = 0; i < 6; i++){
+  //      key.keyByte[i] = 0xFF;
+  //  }
+   
+    // Allow the hardware to sort itself out
+   
+ }
+
+void loop()
+{
+//  Serial.println("Free..");
+
+// String hold;
+ 
+  Current_time = millis();
+
+// Read Sensor
+  sread();
+//  Check Connection
+  if (!client.connected())  
+  {
+   
+//    Serial.println("Trying to connect...");
+      reconnect();
+  }
+  
+    
+  
+  if((int(Current_time-Attemping_time) % 60000 == 0) && Current_time-Attemping_time>=60000)
+  {
+                String tmp;
+                CT_out1();
+                CT_out2(); 
+                k=kilos1+kilos2;
+                tmp = Module_id +' '+ String(h) +' '+ String(t) +' '+ String(k) +' ' +Status_AC1 +' '+Local_Server+Status_AC2;
+                Serial.println(tmp);
+                tmp.toCharArray(tmp2, 100);
+                client.publish(pub_Topic_TEMP , tmp2);
+                delay(500);
+                client.publish("D_STATUS","ONLINE 102 192.168.1.2");
+                Attemping_time=millis();
+    
+  }
+  
+  
+
+    if (Serial.available()  )  
+    {
+     
+      
+      Serial.println("In Serial.Available...");
+      buzo();
+      count = 0;
+     hold="";
+     
+      if(!((Card_Read[1] == temp[1]) & (Card_Read[2] == temp[2]) & (Card_Read[3] == temp[3]) &(Card_Read[4] == temp[4]) & (Card_Read[5] == temp[5]) & (Card_Read[6] == temp[6]) & (Card_Read[7] == temp[7]) & (Card_Read[8] == temp[8]) & (Card_Read[9] == temp[9]) & (Card_Read[10] == temp[10]) & (Card_Read[11] == temp[11]) & (Card_Read[0] == temp[0])))
+      {
+        while(Serial.available() && count < 12)          // Read 12 characters and store them in input array
+        {
+           Card_Read[count] = Serial.read();
+           temp[count] = Card_Read[count];
+           count++;  
+           delay(5);
+        }
+        while(Serial.available())
+        {
+          char t=Serial.read();
+          delay(1); 
+        }
+        for(int i=0 ; i<12 ; i++ )  
+        {
+          hold +=  String(temp[i]);
+        }
+  //      Serial.print("Card_Read : ");
+//        Serial.println(Card_Read);
+  //      Serial.print("temp : ");
+//        Serial.println(temp);
+        //      Serial.print("hold :");
+       Serial.println(hold);
+        Serial.flush();
+        if((Card_Read[0] ^ Card_Read[2] ^ Card_Read[4] ^ Card_Read[6] ^ Card_Read[8] == Card_Read[10]) && (Card_Read[1] ^ Card_Read[3] ^ Card_Read[5] ^ Card_Read[7] ^ Card_Read[9] == Card_Read[11]))  
+        {
+//          Serial.println("Card Read Succesfully... :)");
+          Serial.print("your card no :");
+          Serial.println(hold);                             // Print RFID tag number
+          Card_Read_temp = hold;
+  //        Serial.println(Data1);
+//          if(Status_AC1 == "OFF" ) 
+//              {
+//                    CODE_AC1(hold);                                //10000-5000 - Working
+//              }
+//          else if(Status_AC1 == "ON") 
+//          {
+              CT_out1();
+                CODE_AC1();
+              if(Status_AC2=="ON")
+              {
+                CT_out2();
+                CODE_AC2();
+              }
+//          }
+        
+          
+          client.loop();
+        } 
+        else 
+        {
+          Serial.println("Card Read Error ... :( ");      
+        }
+      }
+      else
+      {
+        Serial.print("card error");
+      }
+      Serial.end();
+      //ss.end();
+      Serial.begin(9600);
+//      ss.begin(9600);
+      
+    }
+  
+    buttonNew=digitalRead(8);
+    if(buttonNew==1 && buttonOld==0)
+    {
+      buzo();
+      if( Status_AC2=="OFF" && Status_AC1=="ON")
+      {
+        CT_out2();
+        CODE_AC2();
+                
+      }
+      else if( Status_AC2=="ON" && Status_AC1=="ON")
+      {         
+        CODE_AC2();
+      }
+      
+
+    }
+    buttonOld=buttonNew;
+    
+    
+    client.loop();
+  
+      
+    }
