@@ -1,0 +1,55 @@
+.adjust{
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+.card-body{
+	box-shadow: rgb(38, 57, 77) 0px 20px 30px -10px;
+}
+
+.cardhead{
+	text-align: center;
+	font-weight: 900;
+	color: white;
+}
+
+.card-body h6{
+    font-weight: 900;
+    color:black;
+}
+
+#sidebar{
+	position: absolute;
+	width: 15%;
+	height: 100%;
+	left: -15%;
+	background-color: black;
+	z-index:500;
+}
+
+#sidebar li{
+	color: white;
+	padding: 15px;
+	border-bottom: 1px solid gray;
+	font-size: 30px;
+	text-align: center;
+
+}
+
+.toggle-btn{
+	position: absolute;
+	left: 105%;
+	top: 15px;
+}
+
+.toggle-btn span{
+	background-color: black;
+	display: block;
+	margin: 3px;
+	height: 5px;
+	width: 30px;
+}
+
+#sidebar.active{
+	left: -1%;
+	
+}

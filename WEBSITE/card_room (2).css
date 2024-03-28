@@ -1,0 +1,35 @@
+.link-danger {
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  }
+  
+  .link-danger:hover{
+    color: #d9534f;
+    border-color: #d9534f;
+    box-shadow: 0em 0.5em 0.5em -0.4em #d9534f;
+    transform: translateY(-0.25em);
+    cursor: pointer;
+  }
+
+  .link-success {
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .link-success:hover{
+    color: 	#5cb85c;
+    border-color: 	#5cb85c;
+    box-shadow: 0em 0.7em 0.7em -0.4em 	#5cb85c;
+    transform: translateY(-0.2em);
+    cursor: pointer;
+  }
+
+.Disable-link:disabled{
+
+  pointer-events: none;
+
+}
+
+
