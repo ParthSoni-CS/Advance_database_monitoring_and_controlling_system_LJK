@@ -1,6 +1,6 @@
 # Advance_database_monitoring_and_controlling_system_LJK
 
-### Credentials: Parth Vijaykumar Soni(parthsoni08072000@gmail.com) , Nitya Pragneshbhai Parikh(nityaparikh2@gmail.com)
+### Credentials: Parth Vijaykumar Soni(parthvijaykumarsoni@gmail.com) , Nitya Pragneshbhai Parikh(nityaparikh2@gmail.com)
 
 #### This project is based upon controlling and monitoring the system which allows user to control the system from any corner of the world through webportal. 
 
